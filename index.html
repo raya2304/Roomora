@@ -1,0 +1,527 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roomora | Room Design Planner</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root{--accent:#286b53;--wall:#f5eee3;--floor:#d6b891;--ink:#24372f}
+*{box-sizing:border-box}
+body{margin:0;background:#f8f8f5;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
+button,input,select{font:inherit}
+button{transition:all .2s}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #39866a;outline-offset:2px}
+.panel{background:white;border:1px solid #e9e9e3;border-radius:17px}
+.btn{background:var(--accent);color:white;border-radius:10px;padding:11px 15px;font-weight:600}
+.btn:hover{filter:brightness(.92)}
+.soft-btn{border:1px solid #e6e7e0;border-radius:10px;padding:9px 12px;background:white}
+.soft-btn:hover{background:#f2f5ef}
+.active{background:#e5efe7!important;color:#21583f!important;border-color:#b8d3c0!important}
+.swatch{width:32px;height:32px;border-radius:50%;border:2px solid white;outline:1px solid #ddd;cursor:pointer}
+.swatch.chosen{outline:2px solid var(--accent);outline-offset:2px}
+#room{position:relative;width:100%;max-width:640px;aspect-ratio:1.12/1;margin:auto;overflow:hidden;background:var(--floor);border:13px solid #454a45;box-shadow:0 14px 30px #00000012;transition:transform .3s}
+#room:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 52px,#9b79551c 53px 54px),repeating-linear-gradient(90deg,transparent 0 103px,#9b79551c 104px 105px);pointer-events:none}
+#room.is3d{transform:perspective(900px) rotateX(8deg) scale(.96);box-shadow:0 28px 45px #0002}
+.room-rug{position:absolute;left:19%;top:22%;width:60%;height:47%;border-radius:5px;background:#f0e6d5;border:2px solid #ffffff70;box-shadow:0 4px 9px #0001}
+.furniture{position:absolute;display:flex;align-items:center;justify-content:center;cursor:grab;user-select:none;touch-action:none;filter:drop-shadow(0 5px 4px #0002);z-index:2}
+.furniture:active{cursor:grabbing}
+.furniture .item{font-size:clamp(23px,4vw,44px);line-height:1}
+.furniture .tag{position:absolute;top:100%;left:50%;transform:translateX(-50%);font-size:10px;background:#fff;color:#47534a;padding:2px 6px;border-radius:5px;white-space:nowrap;opacity:0;pointer-events:none}
+.furniture.selected{outline:2px dashed var(--accent);outline-offset:4px;border-radius:7px}
+.furniture.selected .tag{opacity:1}
+.furniture:focus-visible{outline:2px dashed var(--accent)}
+.grid-bg{background-image:linear-gradient(#e9ece6 1px,transparent 1px),linear-gradient(90deg,#e9ece6 1px,transparent 1px);background-size:22px 22px}
+.item-card{border:1px solid #ecece7;border-radius:12px;padding:12px 5px;background:white;cursor:pointer}
+.item-card:hover{border-color:#8ab49a;transform:translateY(-2px)}
+.item-card .preview{font-size:34px;height:52px;display:grid;place-items:center}
+.theme-img{background-size:cover;background-position:center}
+input[type=range]{accent-color:var(--accent);width:100%}
+@media(max-width:900px){.workspace{grid-template-columns:1fr!important}.sidebar{display:none}.right-panel{display:grid;grid-template-columns:1fr 1fr;gap:16px}.right-panel .wide{grid-column:1/-1}#room{max-width:540px}}
+@media(max-width:560px){.right-panel{grid-template-columns:1fr}.right-panel .wide{grid-column:auto}.toplinks{display:none}.workspace{padding:10px!important}#room{border-width:8px}.furniture .item{font-size:26px}.mobile-title{font-size:20px}}
+</style>
+</head>
+<body>
+
+<header class="bg-white border-b border-stone-200 sticky top-0 z-20">
+ <div class="max-w-[1600px] mx-auto px-4 md:px-7 py-4 flex items-center justify-between gap-4">
+  <a href="#" class="flex items-center gap-3">
+   <span class="text-3xl">⌂</span>
+   <span><span class="block text-2xl font-bold tracking-tight">Roomora</span><span class="text-xs text-stone-500">Design your dream space</span></span>
+  </a>
+  <nav class="toplinks flex gap-7 text-sm text-stone-600">
+   <a href="#planner" class="hover:text-green-800">Planner</a>
+   <a href="#themes" class="hover:text-green-800">Themes</a>
+   <a href="#furniture" class="hover:text-green-800">Furniture</a>
+  </nav>
+  <button class="btn text-sm" id="saveTop">♡ Save Design</button>
+ </div>
+</header>
+
+<main class="max-w-[1600px] mx-auto p-3 md:p-6">
+ <div class="workspace grid gap-5" style="grid-template-columns:190px minmax(0,1fr) 310px">
+
+  <aside class="sidebar flex flex-col gap-3">
+   <div class="panel p-3">
+    <p class="text-xs uppercase tracking-widest text-stone-400 px-2 py-2">Workspace</p>
+    <a href="#planner" class="flex items-center gap-3 p-3 rounded-xl active text-sm font-medium">⌂ Room planner</a>
+    <a href="#themes" class="flex items-center gap-3 p-3 rounded-xl text-sm hover:bg-stone-50">◉ Color themes</a>
+    <a href="#furniture" class="flex items-center gap-3 p-3 rounded-xl text-sm hover:bg-stone-50">▤ Furniture</a>
+    <button id="loadDesign" class="w-full text-left flex items-center gap-3 p-3 rounded-xl text-sm hover:bg-stone-50">▣ My designs</button>
+   </div>
+   <div class="panel p-4 mt-auto bg-[#f0f2e9]">
+    <div class="text-3xl mb-3">🌿</div>
+    <h3 class="font-semibold">Small changes, big comfort.</h3>
+    <p class="text-xs text-stone-600 leading-5 mt-2">Create a space that feels like home. Your ideas, your style.</p>
+    <div class="text-center text-5xl mt-5">🪴</div>
+   </div>
+  </aside>
+
+  <section id="planner" class="min-w-0 flex flex-col gap-4">
+   <div class="panel p-3 md:p-5">
+    <div class="flex items-center justify-between gap-2 flex-wrap mb-5">
+     <div>
+      <h1 class="mobile-title text-2xl font-bold">Your room studio</h1>
+      <p class="text-sm text-stone-500 mt-1">Make your space yours.</p>
+     </div>
+     <select id="roomType" class="soft-btn text-sm">
+      <option value="Living Room">Living Room</option>
+      <option value="Bedroom">Bedroom</option>
+      <option value="Study Room">Study Room</option>
+      <option value="Dining Room">Dining Room</option>
+     </select>
+    </div>
+
+    <div class="flex justify-between items-center gap-2 mb-4 flex-wrap">
+     <div class="flex gap-2">
+      <button id="view2d" class="soft-btn active text-sm">2D View</button>
+      <button id="view3d" class="soft-btn text-sm">3D Preview</button>
+     </div>
+     <div class="flex gap-2">
+      <button id="undo" class="soft-btn" title="Undo">↶</button>
+      <button id="reset" class="soft-btn text-sm">Reset</button>
+     </div>
+    </div>
+
+    <div class="grid-bg rounded-xl p-3 md:p-6 overflow-hidden">
+     <div id="room" aria-label="Interactive room design">
+      <div class="room-rug"></div>
+      <div id="furnitureLayer"></div>
+     </div>
+    </div>
+    <div class="flex flex-wrap justify-between items-center gap-3 mt-4 text-xs text-stone-500">
+     <span>✥ Drag furniture to reposition it</span>
+     <span id="itemCount">4 items in your room</span>
+    </div>
+    <div class="mt-4 bg-stone-50 rounded-xl p-4">
+     <div class="flex justify-between items-center mb-2">
+      <span class="text-sm font-medium">Room dimensions</span>
+      <span id="dimensionLabel" class="text-sm text-stone-500">5m × 4m</span>
+     </div>
+     <input id="roomSize" type="range" min="3" max="8" value="5" aria-label="Room width">
+     <div class="flex justify-between text-xs text-stone-400 mt-1"><span>Compact</span><span>Spacious</span></div>
+    </div>
+   </div>
+
+   <div class="panel p-4" id="themes">
+    <div class="flex justify-between items-center mb-4">
+     <div><h2 class="font-bold text-lg">Find your style</h2><p class="text-xs text-stone-500 mt-1">Explore different moods.</p></div>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="themeList">
+     <button class="theme-btn item-card text-left" data-theme="Modern Beige">
+      <div class="h-16 rounded-lg mb-2 flex overflow-hidden"><span class="flex-1 bg-[#e8dac5]"></span><span class="flex-1 bg-[#b99975]"></span><span class="flex-1 bg-[#f6f1e9]"></span></div><span class="text-sm font-semibold">Modern Beige</span>
+     </button>
+     <button class="theme-btn item-card text-left" data-theme="Forest Green">
+      <div class="h-16 rounded-lg mb-2 flex overflow-hidden"><span class="flex-1 bg-[#d4dac6]"></span><span class="flex-1 bg-[#71856b]"></span><span class="flex-1 bg-[#294c3d]"></span></div><span class="text-sm font-semibold">Forest Green</span>
+     </button>
+     <button class="theme-btn item-card text-left" data-theme="Coastal Blue">
+      <div class="h-16 rounded-lg mb-2 flex overflow-hidden"><span class="flex-1 bg-[#dbe7e9]"></span><span class="flex-1 bg-[#8aaab8]"></span><span class="flex-1 bg-[#486579]"></span></div><span class="text-sm font-semibold">Coastal Blue</span>
+     </button>
+     <button class="theme-btn item-card text-left" data-theme="Warm Earth">
+      <div class="h-16 rounded-lg mb-2 flex overflow-hidden"><span class="flex-1 bg-[#ead1b3]"></span><span class="flex-1 bg-[#b77e53]"></span><span class="flex-1 bg-[#77452d]"></span></div><span class="text-sm font-semibold">Warm Earth</span>
+     </button>
+    </div>
+   </div>
+  </section>
+
+  <aside class="right-panel flex flex-col gap-4 min-w-0">
+   <section class="panel p-4" id="furniture">
+    <h2 class="text-lg font-bold">Furniture library</h2>
+    <p class="text-xs text-stone-500 mt-1 mb-4">Select a piece to add it to your room.</p>
+    <input id="searchFurniture" type="search" placeholder="⌕  Search furniture..." class="w-full border border-stone-200 rounded-xl px-3 py-3 text-sm mb-4">
+    <div class="grid grid-cols-3 gap-2" id="furnitureList"></div>
+    <p class="text-xs text-stone-400 mt-4">Tip: Select an item in the room to move or remove it.</p>
+   </section>
+
+   <section class="panel p-4">
+    <h2 class="font-bold text-lg">Room colors</h2>
+    <p class="text-xs text-stone-500 mt-1 mb-4">Change the look of your space.</p>
+    <label class="text-sm font-medium block mb-2">Wall color</label>
+    <div class="flex flex-wrap gap-3 mb-5" id="wallColors">
+     <button class="swatch chosen" data-color="#f5eee3" style="background:#f5eee3" aria-label="Ivory wall"></button>
+     <button class="swatch" data-color="#e4e9dc" style="background:#e4e9dc" aria-label="Sage wall"></button>
+     <button class="swatch" data-color="#dce7eb" style="background:#dce7eb" aria-label="Blue wall"></button>
+     <button class="swatch" data-color="#ead8cb" style="background:#ead8cb" aria-label="Peach wall"></button>
+     <button class="swatch" data-color="#ded9ce" style="background:#ded9ce" aria-label="Grey wall"></button>
+     <input id="customWall" type="color" value="#f5eee3" class="w-8 h-8 cursor-pointer" title="Custom wall color">
+    </div>
+    <label class="text-sm font-medium block mb-2">Floor color</label>
+    <div class="flex flex-wrap gap-3 mb-5" id="floorColors">
+     <button class="swatch chosen" data-color="#d6b891" style="background:#d6b891" aria-label="Oak floor"></button>
+     <button class="swatch" data-color="#b28a65" style="background:#b28a65" aria-label="Walnut floor"></button>
+     <button class="swatch" data-color="#c7c6bb" style="background:#c7c6bb" aria-label="Stone floor"></button>
+     <button class="swatch" data-color="#eee7d9" style="background:#eee7d9" aria-label="Light floor"></button>
+     <input id="customFloor" type="color" value="#d6b891" class="w-8 h-8 cursor-pointer" title="Custom floor color">
+    </div>
+    <div class="border-t border-stone-100 pt-4">
+     <div class="flex justify-between items-center"><span class="text-sm">Estimated budget</span><span id="budget" class="text-xl font-bold text-green-800">₹ 42,000</span></div>
+     <p class="text-xs text-stone-400 mt-1">Illustrative furniture estimate, not a market quote.</p>
+    </div>
+    <button id="apply" class="btn w-full mt-4">✓ Apply design</button>
+    <button id="download" class="soft-btn w-full mt-2 text-sm">↓ Export room summary</button>
+   </section>
+
+   <section class="panel p-4">
+    <h2 class="font-bold">Your design</h2>
+    <p id="status" class="text-sm text-stone-500 mt-2">Ready to create something beautiful.</p>
+    <button id="deleteSelected" class="soft-btn w-full mt-3 text-sm">Remove selected furniture</button>
+   </section>
+  </aside>
+ </div>
+ <footer class="text-center text-xs text-stone-400 py-8">ROOMORA · Design your dream space · Built with HTML, Tailwind CSS & JavaScript</footer>
+</main>
+
+<div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-[#254f3d] text-white px-5 py-3 rounded-xl shadow-lg text-sm z-50 hidden" role="status"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+
+const catalog=[
+ {name:"Sofa",icon:"🛋️",price:18000},
+ {name:"Armchair",icon:"🪑",price:6500},
+ {name:"Coffee Table",icon:"🪵",price:4500},
+ {name:"Bed",icon:"🛏️",price:22000},
+ {name:"Plant",icon:"🪴",price:900},
+ {name:"Floor Lamp",icon:"💡",price:1800},
+ {name:"Bookshelf",icon:"📚",price:5500},
+ {name:"Desk",icon:"🖥️",price:7500},
+ {name:"Wardrobe",icon:"🚪",price:12000},
+ {name:"Dining Table",icon:"🍽️",price:9500},
+ {name:"Rug",icon:"🟫",price:2500},
+ {name:"Wall Art",icon:"🖼️",price:1500}
+];
+
+const themes={
+ "Modern Beige":{wall:"#f5eee3",floor:"#d6b891",accent:"#286b53"},
+ "Forest Green":{wall:"#e4e9dc",floor:"#bba486",accent:"#355c43"},
+ "Coastal Blue":{wall:"#dce7eb",floor:"#d5c3a7",accent:"#456d86"},
+ "Warm Earth":{wall:"#ead8cb",floor:"#b28a65",accent:"#895637"}
+};
+
+let items=[];
+let selected=null;
+let nextId=1;
+let history=[];
+let appliedTheme="Modern Beige";
+let wall="#f5eee3";
+let floor="#d6b891";
+let roomName="Living Room";
+let roomWidth=5;
+let view3d=false;
+
+function snapshot(){
+ history.push(JSON.stringify({items,wall,floor,roomName,roomWidth,appliedTheme}));
+ if(history.length>30)history.shift();
+}
+
+function toast(message){
+ const el=$("#toast");
+ el.textContent=message;
+ el.classList.remove("hidden");
+ clearTimeout(toast.timer);
+ toast.timer=setTimeout(()=>el.classList.add("hidden"),2400);
+}
+
+function addItem(name){
+ const data=catalog.find(x=>x.name===name);
+ if(!data)return;
+ snapshot();
+ const index=items.length;
+ const item={
+  id:nextId++,name,icon:data.icon,price:data.price,
+  x:20+(index%3)*27,y:22+(index%3)*22
+ };
+ if(name==="Bed"){item.x=28;item.y=30}
+ if(name==="Sofa"){item.x=27;item.y=25}
+ if(name==="Coffee Table"){item.x=48;item.y=53}
+ if(name==="Plant"){item.x=9;item.y=9}
+ items.push(item);
+ selected=item.id;
+ render();
+ toast(name+" added to your room");
+}
+
+function renderFurniture(){
+ const layer=$("#furnitureLayer");
+ layer.innerHTML="";
+ items.forEach(item=>{
+  const el=document.createElement("button");
+  el.className="furniture"+(selected===item.id?" selected":"");
+  el.style.left=item.x+"%";
+  el.style.top=item.y+"%";
+  el.style.width=item.name==="Bed"?"30%":item.name==="Sofa"?"28%":"17%";
+  el.style.height=item.name==="Bed"?"25%":item.name==="Sofa"?"17%":"15%";
+  el.setAttribute("aria-label",item.name+", select and drag");
+  el.innerHTML='<span class="item"></span><span class="tag"></span>';
+  el.querySelector(".item").textContent=item.icon;
+  el.querySelector(".tag").textContent=item.name;
+  el.addEventListener("pointerdown",e=>{
+   if(e.button!==0)return;
+   e.preventDefault();
+   selected=item.id;
+   const rect=$("#room").getBoundingClientRect();
+   const startX=e.clientX,startY=e.clientY;
+   const oldX=item.x,oldY=item.y;
+   let moved=false;
+   el.setPointerCapture(e.pointerId);
+   function move(ev){
+    const dx=(ev.clientX-startX)/rect.width*100;
+    const dy=(ev.clientY-startY)/rect.height*100;
+    if(Math.abs(dx)+Math.abs(dy)>0.5)moved=true;
+    item.x=Math.max(0,Math.min(83,oldX+dx));
+    item.y=Math.max(0,Math.min(82,oldY+dy));
+    el.style.left=item.x+"%";
+    el.style.top=item.y+"%";
+   }
+   function end(){
+    el.removeEventListener("pointermove",move);
+    el.removeEventListener("pointerup",end);
+    el.removeEventListener("pointercancel",end);
+    if(moved){updateBudget();updateCount()}
+    else renderFurniture();
+   }
+   el.addEventListener("pointermove",move);
+   el.addEventListener("pointerup",end);
+   el.addEventListener("pointercancel",end);
+   renderFurniture();
+  });
+  el.addEventListener("click",()=>{selected=item.id;renderFurniture()});
+  layer.appendChild(el);
+ });
+}
+
+function renderCatalog(){
+ const search=$("#searchFurniture").value.toLowerCase();
+ $("#furnitureList").innerHTML="";
+ catalog.filter(c=>c.name.toLowerCase().includes(search)).forEach(c=>{
+  const b=document.createElement("button");
+  b.className="item-card text-center";
+  b.innerHTML='<div class="preview"></div><div class="text-xs font-semibold mt-1"></div><div class="text-xs text-stone-400 mt-1"></div>';
+  b.querySelector(".preview").textContent=c.icon;
+  b.children[1].textContent=c.name;
+  b.children[2].textContent="₹"+c.price.toLocaleString("en-IN");
+  b.addEventListener("click",()=>addItem(c.name));
+  $("#furnitureList").appendChild(b);
+ });
+}
+
+function updateBudget(){
+ const total=items.reduce((sum,item)=>sum+item.price,0);
+ $("#budget").textContent="₹ "+total.toLocaleString("en-IN");
+}
+function updateCount(){
+ $("#itemCount").textContent=items.length+" item"+(items.length===1?"":"s")+" in your room";
+}
+function applyColors(){
+ $("#room").style.background=wall;
+ $("#room").style.setProperty("--floor",floor);
+ $("#room").style.backgroundColor=floor;
+ $("#room").style.backgroundImage="linear-gradient("+wall+" 0 0)";
+ $("#room").style.backgroundColor=floor;
+ $("#room").style.backgroundImage="repeating-linear-gradient(0deg,transparent 0 52px,#9b79551c 53px 54px),repeating-linear-gradient(90deg,transparent 0 103px,#9b79551c 104px 105px)";
+ $("#room").style.setProperty("background-color",floor);
+ $("#room").style.borderColor="#454a45";
+ $("#room").querySelector(".room-rug").style.background="#f0e6d5";
+ document.documentElement.style.setProperty("--accent",themes[appliedTheme]?.accent||"#286b53");
+ // The room's floor is the main visible canvas; the wall color is displayed on its border.
+ $("#room").style.borderColor=wall;
+}
+function render(){
+ applyColors();
+ renderFurniture();
+ updateBudget();
+ updateCount();
+ $("#dimensionLabel").textContent=roomWidth+"m × "+Math.max(2,roomWidth-1)+"m";
+ $("#room").classList.toggle("is3d",view3d);
+ $("#view2d").classList.toggle("active",!view3d);
+ $("#view3d").classList.toggle("active",view3d);
+ $("#roomType").value=roomName;
+}
+
+function applyTheme(name){
+ if(!themes[name])return;
+ snapshot();
+ appliedTheme=name;
+ wall=themes[name].wall;
+ floor=themes[name].floor;
+ $$("#wallColors .swatch").forEach(b=>b.classList.toggle("chosen",b.dataset.color===wall));
+ $$("#floorColors .swatch").forEach(b=>b.classList.toggle("chosen",b.dataset.color===floor));
+ $("#customWall").value=wall;
+ $("#customFloor").value=floor;
+ $$(".theme-btn").forEach(b=>b.classList.toggle("active",b.dataset.theme===name));
+ render();
+ $("#status").textContent=name+" theme applied.";
+}
+
+function removeSelected(){
+ if(selected===null){toast("Select a furniture item first");return}
+ snapshot();
+ items=items.filter(item=>item.id!==selected);
+ selected=null;
+ render();
+ toast("Furniture removed");
+}
+
+function saveDesign(){
+ const design={items,wall,floor,roomName,roomWidth,appliedTheme,nextId};
+ localStorage.setItem("roomoraDesign",JSON.stringify(design));
+ $("#status").textContent="Your design has been saved in this browser.";
+ toast("Design saved successfully");
+}
+
+function loadDesign(){
+ const raw=localStorage.getItem("roomoraDesign");
+ if(!raw){toast("No saved design found yet");return}
+ try{
+  const d=JSON.parse(raw);
+  snapshot();
+  items=d.items||[];
+  wall=d.wall||themes["Modern Beige"].wall;
+  floor=d.floor||themes["Modern Beige"].floor;
+  roomName=d.roomName||"Living Room";
+  roomWidth=d.roomWidth||5;
+  appliedTheme=d.appliedTheme||"Modern Beige";
+  nextId=d.nextId||1;
+  selected=null;
+  $("#roomSize").value=roomWidth;
+  $("#status").textContent="Your saved design is loaded.";
+  render();
+  toast("Saved design loaded");
+ }catch(e){toast("Could not load saved design")}
+}
+
+$("#searchFurniture").addEventListener("input",renderCatalog);
+$("#view2d").addEventListener("click",()=>{view3d=false;render()});
+$("#view3d").addEventListener("click",()=>{view3d=true;render()});
+$("#roomType").addEventListener("change",e=>{
+ snapshot();roomName=e.target.value;render();
+ $("#status").textContent=roomName+" selected.";
+});
+$("#roomSize").addEventListener("input",e=>{
+ roomWidth=Number(e.target.value);render();
+});
+$("#saveTop").addEventListener("click",saveDesign);
+$("#loadDesign").addEventListener("click",loadDesign);
+$("#deleteSelected").addEventListener("click",removeSelected);
+
+$("#reset").addEventListener("click",()=>{
+ snapshot();
+ items=[];
+ selected=null;
+ wall=themes["Modern Beige"].wall;
+ floor=themes["Modern Beige"].floor;
+ appliedTheme="Modern Beige";
+ roomName="Living Room";
+ roomWidth=5;
+ view3d=false;
+ $("#roomSize").value=5;
+ $$(".theme-btn").forEach(b=>b.classList.toggle("active",b.dataset.theme===appliedTheme));
+ $$("#wallColors .swatch").forEach(b=>b.classList.toggle("chosen",b.dataset.color===wall));
+ $$("#floorColors .swatch").forEach(b=>b.classList.toggle("chosen",b.dataset.color===floor));
+ render();
+ $("#status").textContent="Room reset. Start a new design!";
+ toast("Room reset");
+});
+
+$("#undo").addEventListener("click",()=>{
+ const previous=history.pop();
+ if(!previous){toast("Nothing to undo yet");return}
+ const d=JSON.parse(previous);
+ items=d.items;wall=d.wall;floor=d.floor;
+ roomName=d.roomName;roomWidth=d.roomWidth;
+ appliedTheme=d.appliedTheme;selected=null;
+ $("#roomSize").value=roomWidth;
+ $$(".theme-btn").forEach(b=>b.classList.toggle("active",b.dataset.theme===appliedTheme));
+ $$("#wallColors .swatch").forEach(b=>b.classList.toggle("chosen",b.dataset.color===wall));
+ $$("#floorColors .swatch").forEach(b=>b.classList.toggle("chosen",b.dataset.color===floor));
+ render();
+ toast("Previous design restored");
+});
+
+$$(".theme-btn").forEach(b=>b.addEventListener("click",()=>applyTheme(b.dataset.theme)));
+
+function bindSwatches(container,kind){
+ $$(container+" .swatch").forEach(b=>b.addEventListener("click",()=>{
+  snapshot();
+  if(kind==="wall")wall=b.dataset.color;else floor=b.dataset.color;
+  $$(container+" .swatch").forEach(x=>x.classList.toggle("chosen",x===b));
+  render();
+ }));
+}
+bindSwatches("#wallColors","wall");
+bindSwatches("#floorColors","floor");
+
+$("#customWall").addEventListener("input",e=>{
+ wall=e.target.value;
+ $$("#wallColors .swatch").forEach(b=>b.classList.toggle("chosen",b.dataset.color===wall));
+ render();
+});
+$("#customFloor").addEventListener("input",e=>{
+ floor=e.target.value;
+ $$("#floorColors .swatch").forEach(b=>b.classList.toggle("chosen",b.dataset.color===floor));
+ render();
+});
+
+$("#apply").addEventListener("click",()=>{
+ $("#status").textContent="Your "+appliedTheme+" design is ready.";
+ toast("Design applied!");
+});
+$("#download").addEventListener("click",()=>{
+ const report=[
+ "ROOMORA — ROOM DESIGN SUMMARY",
+ "Room: "+roomName,
+ "Theme: "+appliedTheme,
+ "Wall color: "+wall,
+ "Floor color: "+floor,
+ "Dimensions: "+roomWidth+"m × "+Math.max(2,roomWidth-1)+"m",
+ "",
+ "FURNITURE",
+ ...(items.length?items.map(i=>i.name+" — ₹"+i.price.toLocaleString("en-IN")):["No furniture added"]),
+ "",
+ "Estimated furniture total: ₹"+items.reduce((s,i)=>s+i.price,0).toLocaleString("en-IN"),
+ "",
+ "Note: Illustrative estimate, not a market quote."
+ ].join("\n");
+ const blob=new Blob([report],{type:"text/plain;charset=utf-8"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;a.download="roomora-design.txt";a.click();
+ URL.revokeObjectURL(url);
+ toast("Room summary exported");
+});
+
+const starter=[
+ {name:"Sofa",icon:"🛋️",price:18000,x:31,y:25},
+ {name:"Coffee Table",icon:"🪵",price:4500,x:43,y:49},
+ {name:"Plant",icon:"🪴",price:900,x:8,y:9},
+ {name:"Armchair",icon:"🪑",price:6500,x:12,y:45}
+];
+items=starter.map(item=>({...item,id:nextId++}));
+selected=null;
+renderCatalog();
+render();
+</script>
+</body>
+</html>
